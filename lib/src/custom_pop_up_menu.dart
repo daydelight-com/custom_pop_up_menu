@@ -105,6 +105,7 @@ class _CustomPopupMenuState extends State<CustomPopupMenu> {
                 ),
                 verticalMargin: widget.verticalMargin,
                 position: widget.position,
+                bottomInset: MediaQuery.of(context).viewInsets.bottom,
               ),
               children: <Widget>[
                 if (widget.showArrow)
@@ -264,12 +265,14 @@ class _MenuLayoutDelegate extends MultiChildLayoutDelegate {
     required this.anchorSize,
     required this.anchorOffset,
     required this.verticalMargin,
+    required this.bottomInset,
     this.position,
   });
 
   final Size anchorSize;
   final Offset anchorOffset;
   final double verticalMargin;
+  final double bottomInset;
   final PreferredPosition? position;
 
   @override
@@ -303,10 +306,12 @@ class _MenuLayoutDelegate extends MultiChildLayoutDelegate {
       );
     }
 
+    final effectiveAnchorBottomY = size.height - bottomInset;
+
     bool isTop = false;
     if (position == null) {
       // auto calculate position
-      isTop = anchorBottomY > size.height / 2;
+      isTop = anchorBottomY > effectiveAnchorBottomY / 2;
     } else {
       isTop = position == PreferredPosition.top;
     }
