@@ -8,10 +8,9 @@ enum PressType {
   singleClick,
 }
 
-enum PreferredPosition {
-  top,
-  bottom,
-}
+enum PreferredPosition { top, middle, bottom }
+
+enum VerticalPosition { top, middle, bottom }
 
 class CustomPopupMenuController extends ChangeNotifier {
   bool menuIsShowing = false;
@@ -258,6 +257,7 @@ enum _MenuPosition {
   topLeft,
   topCenter,
   topRight,
+  Middle,
 }
 
 class _MenuLayoutDelegate extends MultiChildLayoutDelegate {
@@ -308,78 +308,99 @@ class _MenuLayoutDelegate extends MultiChildLayoutDelegate {
 
     final effectiveAnchorBottomY = size.height - bottomInset;
 
-    bool isTop = false;
+    final arrowOffsetX = anchorCenterX - arrowSize.width / 2;
+
+    final arrowOffsetY_top = anchorTopY - verticalMargin - arrowSize.height;
+    final arrowOffsetY_middle = size.height / 2;
+    final arrowOffsetY_bottom = anchorBottomY + verticalMargin;
+
+    final menuOffsetY_top =
+        anchorTopY - verticalMargin - arrowSize.height - contentSize.height;
+    final menuOffsetY_middle = size.height / 2 - contentSize.height;
+    final menuOffsetY_bottom =
+        anchorBottomY + verticalMargin + arrowSize.height;
+
+    final isMenuOverTopBoundary =
+        anchorTopY - verticalMargin - arrowSize.height - contentSize.height <
+        0; // to check if the pop menu flow over top boundary
+    final isContentOverBottomBoundary = anchorBottomY > effectiveAnchorBottomY;
+
+    final isContentInLowerHalf = anchorBottomY > effectiveAnchorBottomY / 2;
+    late final VerticalPosition verticalPosition;
+
     if (position == null) {
       // auto calculate position
-      isTop = anchorBottomY > effectiveAnchorBottomY / 2;
+      if (((isContentOverBottomBoundary) && (anchorTopY < 0)) ||
+          (((isContentOverBottomBoundary) || (isContentInLowerHalf)) &&
+              isMenuOverTopBoundary)) {
+        verticalPosition = VerticalPosition.middle;
+      } else if (isContentInLowerHalf) {
+        verticalPosition = VerticalPosition.top;
+      } else {
+        verticalPosition = VerticalPosition.bottom;
+      }
     } else {
-      isTop = position == PreferredPosition.top;
+      verticalPosition = position == PreferredPosition.top
+          ? VerticalPosition.top
+          : VerticalPosition.bottom;
     }
-    if (anchorCenterX - contentSize.width / 2 < 0) {
-      menuPosition = isTop ? _MenuPosition.topLeft : _MenuPosition.bottomLeft;
+
+    if (verticalPosition == VerticalPosition.middle) {
+      menuPosition = _MenuPosition.Middle;
+    } else if (anchorCenterX - contentSize.width / 2 < 0) {
+      menuPosition = verticalPosition == VerticalPosition.top
+          ? _MenuPosition.topLeft
+          : _MenuPosition.bottomLeft;
     } else if (anchorCenterX + contentSize.width / 2 > size.width) {
-      menuPosition = isTop ? _MenuPosition.topRight : _MenuPosition.bottomRight;
+      menuPosition = verticalPosition == VerticalPosition.top
+          ? _MenuPosition.topRight
+          : _MenuPosition.bottomRight;
     } else {
-      menuPosition =
-          isTop ? _MenuPosition.topCenter : _MenuPosition.bottomCenter;
+      menuPosition = verticalPosition == VerticalPosition.top
+          ? _MenuPosition.topCenter
+          : _MenuPosition.bottomCenter;
     }
 
     switch (menuPosition) {
-      case _MenuPosition.bottomCenter:
-        arrowOffset = Offset(
-          anchorCenterX - arrowSize.width / 2,
-          anchorBottomY + verticalMargin,
-        );
+      case _MenuPosition.Middle:
+        arrowOffset = Offset(arrowOffsetX, arrowOffsetY_middle);
         contentOffset = Offset(
           anchorCenterX - contentSize.width / 2,
-          anchorBottomY + verticalMargin + arrowSize.height,
+          menuOffsetY_middle,
+        );
+        break;
+      case _MenuPosition.bottomCenter:
+        arrowOffset = Offset(arrowOffsetX, arrowOffsetY_bottom);
+        contentOffset = Offset(
+          anchorCenterX - contentSize.width / 2,
+          menuOffsetY_bottom,
         );
         break;
       case _MenuPosition.bottomLeft:
-        arrowOffset = Offset(anchorCenterX - arrowSize.width / 2,
-            anchorBottomY + verticalMargin);
-        contentOffset = Offset(
-          0,
-          anchorBottomY + verticalMargin + arrowSize.height,
-        );
+        arrowOffset = Offset(arrowOffsetX, arrowOffsetY_bottom);
+        contentOffset = Offset(0, menuOffsetY_bottom);
         break;
       case _MenuPosition.bottomRight:
-        arrowOffset = Offset(anchorCenterX - arrowSize.width / 2,
-            anchorBottomY + verticalMargin);
+        arrowOffset = Offset(arrowOffsetX, arrowOffsetY_bottom);
         contentOffset = Offset(
           size.width - contentSize.width,
-          anchorBottomY + verticalMargin + arrowSize.height,
+          menuOffsetY_bottom,
         );
         break;
       case _MenuPosition.topCenter:
-        arrowOffset = Offset(
-          anchorCenterX - arrowSize.width / 2,
-          anchorTopY - verticalMargin - arrowSize.height,
-        );
+        arrowOffset = Offset(arrowOffsetX, arrowOffsetY_top);
         contentOffset = Offset(
           anchorCenterX - contentSize.width / 2,
-          anchorTopY - verticalMargin - arrowSize.height - contentSize.height,
+          menuOffsetY_top,
         );
         break;
       case _MenuPosition.topLeft:
-        arrowOffset = Offset(
-          anchorCenterX - arrowSize.width / 2,
-          anchorTopY - verticalMargin - arrowSize.height,
-        );
-        contentOffset = Offset(
-          0,
-          anchorTopY - verticalMargin - arrowSize.height - contentSize.height,
-        );
+        arrowOffset = Offset(arrowOffsetX, arrowOffsetY_top);
+        contentOffset = Offset(0, menuOffsetY_top);
         break;
       case _MenuPosition.topRight:
-        arrowOffset = Offset(
-          anchorCenterX - arrowSize.width / 2,
-          anchorTopY - verticalMargin - arrowSize.height,
-        );
-        contentOffset = Offset(
-          size.width - contentSize.width,
-          anchorTopY - verticalMargin - arrowSize.height - contentSize.height,
-        );
+        arrowOffset = Offset(arrowOffsetX, arrowOffsetY_top);
+        contentOffset = Offset(size.width - contentSize.width, menuOffsetY_top);
         break;
     }
     if (hasChild(_MenuLayoutId.content)) {
